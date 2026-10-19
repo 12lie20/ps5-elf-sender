@@ -11,6 +11,23 @@
 | **Send to PS5** | يرسل `crlr69.elf` للـ `elfldr` على `127.0.0.1:9021` داخل الجهاز |
 | **JB 13.60** | يفتح صفحة Relapse (استغلال WebKit + kernel) وتشغّله في نفس المتصفح |
 
+## الأدوات (كلها بايلودات)
+
+| الملف | من وين | وش يسوي |
+|---|---|---|
+| `kstuff.elf` | [EchoStretch/kstuff-lite](https://github.com/EchoStretch/kstuff-lite) v1.11 | تعديلات الكرنل، أساس تشغيل نسخ الالعاب |
+| `shadowmountplus.elf` | [drakmor/ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus) 1.7beta5fix1 | يركّب نسخ الالعاب (UFS/PFS) تلقائي |
+| `etaHEN-2.5B.bin` | [etaHEN/etaHEN](https://github.com/etaHEN/etaHEN) 2.5B | صندوق أدوات HEN (ملفات، ثيمات، شروحات) |
+| `ftpsrv-ps5.elf` | [ps5-payload-dev/ftpsrv](https://github.com/ps5-payload-dev/ftpsrv) v0.21.1 | سيرفر FTP على الجهاز |
+| `websrv-ps5.elf` | [ps5-payload-dev/websrv](https://github.com/ps5-payload-dev/websrv) v0.34 | سيرفر ويب على 8080 (تصفح ملفات الجهاز) |
+| `elfldr-ps5.elf` | [ps5-payload-dev/elfldr](https://github.com/ps5-payload-dev/elfldr) v0.26 | نفسه الـ loader، يرفع على 9020 |
+
+الترتيب على 13.60: **kstuff** وبعدين **ShadowMountPlus**. etaHEN 2.5B موجه لـ 8.40–10.01
+وربما ما يشتغل على 13.60.
+
+الملفات كلها ELF64 x86-64 (حتى `etaHEN-2.5B.bin`)، وكل واحد `e_shoff + e_shnum*64` يساوي
+حجمه بالضبط، يعني الـ `elfldr` يقرأه كامل.
+
 ## الترتيب
 
 1. **JB 13.60** — تشتغل الاستغلال في متصفح الـ PS5 (User's Guide). انتظر حتى يطلع:
@@ -76,8 +93,9 @@ python bridge.py --send foo.elf --ps5-host 192.168.1.50
 ## الملفات
 
 ```
-index.html    الصفحة
-crlr69.elf    البايلود (236880 بايت)
-bridge.py     إرسال من الكمبيوتر (اختياري)
-bridge.js     نفس الشي بـ Node (اختياري)
+index.html        الصفحة
+crlr69.elf        البايلود (236880 بايت)
+payloads/         الأدوات (kstuff, shadowmountplus, etaHEN, ftpsrv, websrv, elfldr)
+bridge.py         إرسال من الكمبيوتر (اختياري)
+bridge.js         نفس الشي بـ Node (اختياري)
 ```

@@ -3,24 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>crlr69.elf</title>
+<title>PS5 ELF Sender</title>
 <style>
   body {
     font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0; padding: 3rem 1.25rem; color: #16191d; background: #fff;
   }
-  main { max-width: 28rem; margin: 0 auto; text-align: center; }
+  main { max-width: 30rem; margin: 0 auto; text-align: center; }
   h1 { font-size: 1.3rem; font-weight: 600; margin: 0; word-break: break-all; }
+  h2 { font-size: .95rem; font-weight: 600; margin: 2.5rem 0 .75rem; color: #374151; }
   p { color: #6b7280; font-size: .9rem; margin: .35rem 0 2rem; }
   .row { display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap; }
   button, .btn {
-    font: inherit; padding: .6rem 1.5rem; cursor: pointer; display: inline-block;
+    font: inherit; font-size: .95rem; padding: .55rem 1.4rem; cursor: pointer; display: inline-block;
     border: 1px solid #b9bfc9; border-radius: 4px; background: #f3f4f6; color: #16191d;
     text-decoration: none;
   }
   button:hover, .btn:hover { background: #e8eaee; }
   button[disabled] { opacity: .55; cursor: default; }
   .note { margin-top: 1.1rem; font-size: .8rem; color: #6b7280; }
+  ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid #e5e7eb; }
+  li {
+    display: flex; align-items: center; gap: .75rem; text-align: left;
+    padding: .55rem 0; border-bottom: 1px solid #e5e7eb;
+  }
+  li .n { flex: 1 1 auto; font-size: .9rem; word-break: break-all; }
+  li .s { flex: 0 0 auto; font-size: .78rem; color: #6b7280; }
+  li button { flex: 0 0 auto; padding: .3rem .9rem; font-size: .85rem; }
   #status { margin-top: 1.1rem; font-size: .9rem; color: #374151; min-height: 1.4em; }
   pre {
     margin: 1.5rem 0 0; padding: .75rem; background: #f6f7f9; border: 1px solid #e5e7eb;
@@ -38,45 +47,72 @@
   </div>
   <p class="note">JB runs the Relapse exploit in this browser. Wait for
     &ldquo;elfldr is listening on port 9021&rdquo;, then come back and press Send.</p>
+
+  <h2>Tools</h2>
+  <ul id="tools"></ul>
+  <p class="note">On 13.60: kstuff first, then ShadowMountPlus. etaHEN 2.5B targets 8.40&ndash;10.01,
+    it may not run on 13.60.</p>
+
   <div id="status"></div>
   <pre id="reply" hidden></pre>
 </main>
 
 <script>
 (function () {
-  // The payload the console will pull over the network.
-  var PAYLOAD_URL = 'https://12lie20.github.io/ps5-elf-sender/crlr69.elf';
+  var BASE = 'https://12lie20.github.io/ps5-elf-sender/';
 
-  // elfldr on the console: http://127.0.0.1:9021/?uri=<encoded payload url>
-  var LOADER_URL = 'http://127.0.0.1:9021/?uri=' + encodeURIComponent(PAYLOAD_URL);
+  // Loaded from the console itself: elfldr on 127.0.0.1:9021 pulls the file
+  // from the url given in ?uri=
+  var MAIN = { file: 'crlr69.elf', size: 236880 };
+
+  var TOOLS = [
+    { file: 'payloads/kstuff.elf', size: 1737080 },
+    { file: 'payloads/shadowmountplus.elf', size: 2498376 },
+    { file: 'payloads/etaHEN-2.5B.bin', size: 4678728 },
+    { file: 'payloads/ftpsrv-ps5.elf', size: 191864 },
+    { file: 'payloads/websrv-ps5.elf', size: 1597864 },
+    { file: 'payloads/elfldr-ps5.elf', size: 394480 }
+  ];
 
   var send = document.getElementById('send');
   var status = document.getElementById('status');
   var reply = document.getElementById('reply');
+  var list = document.getElementById('tools');
 
   function show(text) {
     status.textContent = text;
   }
 
-  send.addEventListener('click', function () {
-    send.disabled = true;
-    show('Sending…');
+  function bytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(0) + ' KiB';
+    return (n / 1048576).toFixed(1) + ' MiB';
+  }
+
+  function load(file, button) {
+    var url = BASE + file;
+    var target = 'http://127.0.0.1:9021/?uri=' + encodeURIComponent(url);
+    var name = file.split('/').pop();
+
+    if (button) button.disabled = true;
+    show('Sending ' + name + '…');
+
     var done = false;
     function finish(text) {
       if (done) return;
       done = true;
       clearTimeout(timer);
       show(text);
-      send.disabled = false;
+      if (button) button.disabled = false;
     }
 
-    // The loader keeps the socket open while the payload runs, so a reply may
-    // never arrive. Treat a silent request as a successful send.
+    // The loader holds the socket open while the payload runs, so a reply may
+    // never come back. A silent request still means it went through.
     var timer = setTimeout(function () {
-      finish('Sent. The payload should be running on the console now.');
+      finish('Sent ' + name + '.');
     }, 3000);
 
-    fetch(LOADER_URL, { mode: 'cors', cache: 'no-store' })
+    fetch(target, { mode: 'cors', cache: 'no-store' })
       .then(function (res) {
         return res.text().then(function (body) {
           return { ok: res.ok, status: res.status, body: body };
@@ -86,22 +122,52 @@
         if (done) return;
         done = true;
         clearTimeout(timer);
-        send.disabled = false;
-        show(res.ok ? 'Sent.' : 'Loader replied with HTTP ' + res.status + '.');
+        if (button) button.disabled = false;
+        show(res.ok ? 'Sent ' + name + '.' : 'Loader replied with HTTP ' + res.status + '.');
         if (res.body) {
           reply.hidden = false;
           reply.textContent = res.body;
         }
       })
       .catch(function () {
-        // Blocked by the browser (https page -> http://127.0.0.1 is mixed
-        // content). A top level navigation is not subject to that rule.
+        // https page -> http://127.0.0.1 is mixed content, the browser blocks
+        // the fetch. A top level navigation is not subject to that rule.
         if (done) return;
         done = true;
         clearTimeout(timer);
-        show('Opening the loader…');
-        window.location.href = LOADER_URL;
+        if (button) button.disabled = false;
+        var w = null;
+        try { w = window.open(target, '_blank'); } catch (e) {}
+        if (w) {
+          show('Sent ' + name + ' — check the new tab.');
+        } else {
+          show('Opening the loader…');
+          window.location.href = target;
+        }
       });
+  }
+
+  send.addEventListener('click', function () {
+    load(MAIN.file, send);
+  });
+
+  TOOLS.forEach(function (tool) {
+    var li = document.createElement('li');
+    var name = document.createElement('span');
+    name.className = 'n';
+    name.textContent = tool.file.split('/').pop();
+    var size = document.createElement('span');
+    size.className = 's';
+    size.textContent = bytes(tool.size);
+    var button = document.createElement('button');
+    button.textContent = 'Send';
+    button.addEventListener('click', function () {
+      load(tool.file, button);
+    });
+    li.appendChild(name);
+    li.appendChild(size);
+    li.appendChild(button);
+    list.appendChild(li);
   });
 })();
 </script>
