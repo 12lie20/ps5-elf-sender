@@ -108,6 +108,14 @@
   .badge{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--dim)}
   .badge.live{border-color:rgba(63,185,80,.4);color:var(--ok)}
   .sep{height:1px;background:var(--line);margin:14px 0}
+  .banner{
+    display:none;background:#1c1508;border:1px solid #4a3a12;border-radius:12px;
+    padding:12px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.8;color:#e3c778;
+  }
+  .banner.show{display:block}
+  .banner a{color:var(--accent2);text-decoration:none;border-bottom:1px dashed var(--accent2)}
+  .banner b{color:#f0d68a}
+  a.link{color:var(--accent2);text-decoration:none;border-bottom:1px dashed var(--accent2);cursor:pointer}
 </style>
 </head>
 <body>
@@ -120,6 +128,13 @@
       <div class="sub">إرسال ملفات ELF إلى جهاز PS5 عبر منفذ <span class="mono">9021</span> (elfldr)</div>
     </div>
   </header>
+
+  <div class="banner" id="banner">
+    <b>تنبيه:</b> هذه الصفحة تعمل عبر <span class="mono">https://</span>، ومتصفح Chrome يمنع صفحات الإنترنت من
+    الوصول إلى جهازك على الشبكة المحلية إلا بعد إذنك. الحل الأسهل: شغّل <span class="mono">python bridge.py</span>
+    ثم افتح النسخة المحلية <a href="http://127.0.0.1:8765/" target="_blank" rel="noreferrer">http://127.0.0.1:8765/</a>
+    — تعمل بدون أي أذونات وبدون قيود mixed-content.
+  </div>
 
   <!-- ================= الجهاز ================= -->
   <div class="card">
@@ -178,8 +193,10 @@
     </div>
     <div id="directBox" style="margin-top:12px;display:none">
       <label>رابط الحمولة الذي سيجلبه الـ PS5</label>
-      <input type="text" id="payUrl" class="mono" readonly>
-      <div class="hint">في الوضع المباشر يجب أن يكون الـ PS5 قادراً على الوصول لهذا الرابط (شبكة منزلية أو إنترنت).</div>
+      <input type="text" id="payUrl" class="mono" spellcheck="false">
+      <div class="hint">الـ PS5 يسحب الملف من هذا الرابط بنفسه — يجب أن يكون متاحاً له (إنترنت أو الشبكة المحلية).
+      مثال محلي (يحتاج تشغيل الجسر بـ <span class="mono">--host 0.0.0.0</span>): <span class="mono">http://192.168.1.10:8765/crlr69.elf</span>
+      <br>ملاحظة: من صفحة <span class="mono">https://</span> سيمنع المتصفح هذا الطلب — استخدم النسخة المحلية <span class="mono">http://127.0.0.1:8765/</span>.</div>
     </div>
   </div>
 
@@ -208,6 +225,8 @@
 <script>
 (function(){
   "use strict";
+
+  var CANONICAL = 'https://12lie20.github.io/ps5-elf-sender/';
 
   var LS = {
     host:   'ps5.host',
@@ -320,14 +339,15 @@
     if(!state.payload){ return; }
     var url;
     if(isLocalPage()){
-      // الصفحة تعمل من الجسر - الـ PS5 يجب أن يصل لعنوان الشبكة المحلية
-      var ip = state.lanIP || '192.168.1.10';
-      var port = (el.bridge.value || '').split(':').pop() || '8765';
-      url = 'http://' + ip + ':' + port + '/' + state.payload.name;
+      // الـ PS5 يسحب الملف من Pages مباشرة (يحتاج إنترنت)، أو من الجسر لو كان يعمل على 0.0.0.0
+      url = CANONICAL + state.payload.name;
     } else {
       url = state.payload.url || (location.origin + '/' + state.payload.name);
     }
-    el.payUrl.value = url;
+    if(!el.payUrl.value || el.payUrl.dataset.auto === '1'){
+      el.payUrl.value = url;
+      el.payUrl.dataset.auto = '1';
+    }
   }
 
   /* ---------------- bridge info ---------------- */
@@ -336,7 +356,7 @@
     if(!b) return Promise.resolve(null);
     return fetch(b + '/info', {cache:'no-store'})
       .then(function(r){ return r.json(); })
-      .catch(function(){ return null; });
+      .catch(function(e){ state.bridgeError = e.message; return null; });
   }
 
   /* ---------------- ping ---------------- */
@@ -424,7 +444,16 @@
       headers:{'Content-Type':'application/octet-stream'},
       body: state.payload.bytes
     }).then(function(r){ return r.json(); })
-      .catch(function(e){ throw new Error('فشل الوصول للجسر (' + e.message + ') — هل يعمل bridge.py؟'); });
+      .catch(function(e){
+        var msg = 'تعذّر الوصول إلى الجسر (' + e.message + ').';
+        if(location.protocol === 'https:'){
+          msg += ' المتصفح غالباً يمنع الوصول للشبكة المحلية من صفحات https — اقتحم الجسر: ' +
+                 'python bridge.py ثم افتح http://127.0.0.1:8765/ (أو اسمح للموقع بالوصول للشبكة المحلية من إعدادات الموقع).';
+        } else {
+          msg += ' تأكد أن bridge.py يعمل وأن الرابط صحيح.';
+        }
+        throw new Error(msg);
+      });
   }
 
   function sendDirect(host, port){
@@ -449,6 +478,7 @@
   el.host.addEventListener('input', function(){ save(LS.host, el.host.value); });
   el.port.addEventListener('input', function(){ save(LS.port, el.port.value); });
   el.bridge.addEventListener('input', function(){ save(LS.bridge, el.bridge.value); refreshPayUrl(); });
+  el.payUrl.addEventListener('input', function(){ el.payUrl.dataset.auto = '0'; });
 
   el.pick.addEventListener('click', function(){ el.file.click(); });
   el.file.addEventListener('change', function(e){ loadFile(e.target.files[0]); });
@@ -486,7 +516,12 @@
   el.clear.addEventListener('click', function(){ el.log.textContent = ''; });
 
   /* ---------------- boot ---------------- */
-  log('الصفحة جاهزة. ' + (location.protocol === 'https:' ? 'الموقع عبر https.' : 'الموقع عبر http.'));
+  if(location.protocol === 'https:'){
+    $('banner').classList.add('show');
+    log('الموقع يعمل عبر https — المتصفح قد يمنع الوصول للشبكة المحلية.', 'warn');
+  } else {
+    log('الصفحة تعمل محلياً عبر http — كل المسارات تعمل بدون أذونات.');
+  }
   bridgeInfo().then(function(info){
     if(info && info.lanIPs && info.lanIPs.length){
       state.lanIP = info.lanIPs[0];
@@ -494,6 +529,12 @@
       refreshPayUrl();
     } else {
       log('لم يتم العثور على جسر محلي على ' + el.bridge.value + ' — شغّل: python bridge.py', 'warn');
+      if(location.protocol === 'https:'){
+        log('السبب غالباً: المتصفح يمنع صفحات https من الوصول للشبكة المحلية. ' +
+            'افتح http://127.0.0.1:8765/ بعد تشغيل الجسر (يعمل بدون قيود).', 'warn');
+      } else if(state.bridgeError){
+        log('تفاصيل: ' + state.bridgeError, 'err');
+      }
     }
   });
   loadBundled();
