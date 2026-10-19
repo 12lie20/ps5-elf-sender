@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nav test</title>
+</head>
+<body>
+<h1>crlr69.elf</h1>
+<button id="send">Send to PS5</button>
+<div id="status"></div>
+<pre id="reply" hidden></pre>
+<script>
+(function () {
+  var PAYLOAD_URL = 'https://12lie20.github.io/ps5-elf-sender/crlr69.elf';
+  // pointing at a closed port on purpose: the fetch must fail so the
+  // navigation fallback is exercised
+  var LOADER_URL = 'http://127.0.0.1:9022/?uri=' + encodeURIComponent(PAYLOAD_URL);
+  var send = document.getElementById('send');
+  var status = document.getElementById('status');
+  var reply = document.getElementById('reply');
+  function show(text) { status.textContent = text; }
+  send.addEventListener('click', function () {
+    send.disabled = true;
+    show('Sending…');
+    var done = false;
+    function finish(text) {
+      if (done) return;
+      done = true; clearTimeout(timer); show(text); send.disabled = false;
+    }
+    var timer = setTimeout(function () { finish('Sent.'); }, 3000);
+    fetch(LOADER_URL, { mode: 'cors', cache: 'no-store' })
+      .then(function (res) { return res.text(); })
+      .then(function () { finish('Sent.'); })
+      .catch(function () {
+        if (done) return;
+        done = true; clearTimeout(timer);
+        show('Opening the loader…');
+        window.location.href = LOADER_URL;
+      });
+  });
+})();
+</script>
+</body>
+</html>

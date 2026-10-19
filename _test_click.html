@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>running</title></head>
+<body style="background:#111;color:#ddd;font-family:monospace">
+<iframe id="app" style="width:900px;height:600px;border:0"></iframe>
+<pre id="out">running…</pre>
+<script>
+var page = new URLSearchParams(location.search).get('page') || '/index.html';
+document.getElementById('app').src = page;
+var lines = [];
+function log(s){ lines.push(s); document.getElementById('out').textContent = lines.join('\n'); }
+setTimeout(function(){
+  try{
+    var fr = document.getElementById('app');
+    var doc = fr.contentDocument, win = fr.contentWindow;
+    log('page: ' + page);
+    log('name: ' + doc.getElementById('name') ? '' : '');
+    doc.getElementById('send').click();
+    log('clicked');
+  }catch(e){ log('harness error: ' + e); }
+}, 1500);
+setTimeout(function(){
+  var doc = document.getElementById('app').contentDocument;
+  try { log('status: ' + doc.getElementById('status').textContent); } catch(e){}
+  log('--- page log ---');
+  document.title = 'DONE';
+}, 5000);
+</script>
+</body></html>
