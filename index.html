@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS5 ELF Sender</title>
+<style>
+  :root{
+    --bg:#0b0e14;
+    --panel:#131824;
+    --panel2:#0f1420;
+    --line:#242c3d;
+    --txt:#e6edf6;
+    --dim:#8b98ad;
+    --accent:#2f81f7;
+    --accent2:#58a6ff;
+    --ok:#3fb950;
+    --bad:#f85149;
+    --warn:#d29922;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 600px at 80% -10%,#16213a 0%,var(--bg) 55%) fixed;
+    color:var(--txt);
+    font-family:"Segoe UI",Tahoma,system-ui,-apple-system,"Noto Naskh Arabic",sans-serif;
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+  .logo{
+    width:46px;height:46px;border-radius:12px;flex:0 0 auto;
+    background:linear-gradient(160deg,#3d8bfd,#0b4bb3);
+    display:grid;place-items:center;font-weight:700;font-size:19px;
+    box-shadow:0 6px 18px rgba(47,129,247,.35);
+  }
+  h1{font-size:21px;margin:0;letter-spacing:.2px}
+  .sub{color:var(--dim);font-size:13px;margin-top:2px}
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;
+  }
+  .card h2{
+    font-size:13px;color:var(--dim);margin:0 0 12px;font-weight:600;letter-spacing:.4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card h2 .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:620px){.grid{grid-template-columns:1fr}}
+  label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}
+  input[type=text],input[type=number],select{
+    width:100%;background:#0a0e17;border:1px solid var(--line);color:var(--txt);
+    border-radius:9px;padding:10px 12px;font-size:14px;outline:none;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  }
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,129,247,.15)}
+  input[type=file]{display:none}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .row.end{justify-content:flex-end}
+  button{
+    font-family:inherit;cursor:pointer;border:1px solid var(--line);
+    background:#1a2233;color:var(--txt);border-radius:9px;padding:9px 14px;font-size:13px;
+    transition:.15s border-color,.15s background,.15s transform;
+  }
+  button:hover:not(:disabled){border-color:var(--accent);background:#202a3e}
+  button:active:not(:disabled){transform:translateY(1px)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.primary{
+    background:linear-gradient(180deg,var(--accent2),#1f6feb);border-color:#1f6feb;color:#fff;font-weight:600;
+  }
+  button.primary:hover:not(:disabled){background:linear-gradient(180deg,#79b8ff,#2f81f7)}
+  button.ghost{background:transparent}
+  .send{
+    width:100%;padding:16px;font-size:17px;border-radius:12px;
+    background:linear-gradient(180deg,#3fb950,#238636);border-color:#2ea043;color:#fff;font-weight:700;
+    box-shadow:0 8px 22px rgba(63,185,80,.25);
+  }
+  .send:hover:not(:disabled){background:linear-gradient(180deg,#57d364,#2ea043)}
+  .send.loading{background:linear-gradient(180deg,#6e7681,#4a525d);border-color:#4a525d}
+  .status{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--dim)}
+  .status .led{width:9px;height:9px;border-radius:50%;background:#3a4356;box-shadow:0 0 0 3px rgba(58,67,86,.25)}
+  .status.ok .led{background:var(--ok);box-shadow:0 0 0 3px rgba(63,185,80,.2)}
+  .status.bad .led{background:var(--bad);box-shadow:0 0 0 3px rgba(248,81,73,.2)}
+  .status.warn .led{background:var(--warn);box-shadow:0 0 0 3px rgba(210,153,34,.2)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;direction:ltr;text-align:left;unicode-bidi:plaintext}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px;margin-top:10px}
+  .kv .k{color:var(--dim)}
+  .kv .v{font-family:ui-monospace,Consolas,monospace;word-break:break-all;direction:ltr;text-align:left}
+  .modes{display:flex;gap:10px;flex-wrap:wrap}
+  .mode{
+    flex:1 1 240px;border:1px solid var(--line);border-radius:11px;padding:12px;cursor:pointer;
+    background:#0d121c;transition:.15s;
+  }
+  .mode:hover{border-color:#31405a}
+  .mode.sel{border-color:var(--accent);background:#111a2b;box-shadow:0 0 0 3px rgba(47,129,247,.12)}
+  .mode .t{font-size:13.5px;font-weight:600;margin-bottom:3px}
+  .mode .d{font-size:11.5px;color:var(--dim);line-height:1.6}
+  pre#log{
+    background:#070a10;border:1px solid var(--line);border-radius:10px;padding:12px;
+    font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7;
+    max-height:320px;overflow:auto;margin:0;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-word;
+  }
+  .hint{font-size:11.5px;color:var(--dim);line-height:1.7;margin-top:10px}
+  .hint code{background:#0d121c;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;direction:ltr;display:inline-block}
+  .drop{border:1px dashed #2b3550;border-radius:11px;padding:16px;text-align:center;color:var(--dim);font-size:12.5px;cursor:pointer}
+  .drop.over{border-color:var(--accent);color:var(--accent2);background:#0f1726}
+  .badge{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--dim)}
+  .badge.live{border-color:rgba(63,185,80,.4);color:var(--ok)}
+  .sep{height:1px;background:var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">PS5</div>
+    <div>
+      <h1>PS5 ELF Sender</h1>
+      <div class="sub">إرسال ملفات ELF إلى جهاز PS5 عبر منفذ <span class="mono">9021</span> (elfldr)</div>
+    </div>
+  </header>
+
+  <!-- ================= الجهاز ================= -->
+  <div class="card">
+    <h2><span class="dot"></span>الجهاز</h2>
+    <div class="grid">
+      <div>
+        <label for="host">عنوان IP للـ PS5</label>
+        <input type="text" id="host" class="mono" placeholder="192.168.1.50" autocomplete="off" spellcheck="false">
+      </div>
+      <div>
+        <label for="port">المنفذ</label>
+        <input type="text" id="port" class="mono" value="9021" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="ping">اختبار الاتصال</button>
+      <span id="pingStatus" class="status"><span class="led"></span><span class="txt">لم يتم الاختبار</span></span>
+    </div>
+  </div>
+
+  <!-- ================= الحمولة ================= -->
+  <div class="card">
+    <h2><span class="dot"></span>الحمولة (Payload)</h2>
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div class="kv" style="flex:1 1 260px;margin-top:0">
+        <div class="k">الملف</div><div class="v" id="payName">—</div>
+        <div class="k">الحجم</div><div class="v" id="paySize">—</div>
+        <div class="k">SHA-256</div><div class="v" id="payHash">—</div>
+      </div>
+      <div class="row" style="flex:0 0 auto">
+        <button id="pick" class="ghost">اختر ملف .ELF</button>
+        <input type="file" id="file" accept=".elf,application/octet-stream">
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="drop" id="drop">او اسحب ملف .ELF وأفلته هنا</div>
+  </div>
+
+  <!-- ================= طريقة الإرسال ================= -->
+  <div class="card">
+    <h2><span class="dot"></span>طريقة الإرسال</h2>
+    <div class="modes">
+      <div class="mode sel" data-mode="bridge">
+        <div class="t">عبر الجسر المحلي <span class="badge live">موصى به</span></div>
+        <div class="d">الصفحة ترسل الملف إلى <span class="mono">bridge.py</span> يعمل على جهازك، والجسر يفتح اتصال TCP مباشرة إلى <span class="mono">PS5:9021</span> ويرسل الـ ELF خام.</div>
+      </div>
+      <div class="mode" data-mode="direct">
+        <div class="t">مباشر من المتصفح</div>
+        <div class="d">الصفحة ترسل <span class="mono">GET /?uri=…</span> إلى <span class="mono">PS5:9021</span> والـ PS5 يسحب الملف بنفسه. يتطلب أن تكون الصفحة عبر <span class="mono">http://</span> (ليست https) وإلا منعها المتصفح.</div>
+      </div>
+    </div>
+    <div id="bridgeBox" style="margin-top:12px">
+      <label for="bridge">رابط الجسر</label>
+      <input type="text" id="bridge" class="mono" value="http://127.0.0.1:8765" autocomplete="off" spellcheck="false">
+      <div class="hint">شغّل الجسر على جهازك: <code>python bridge.py</code> — يجب أن يعمل على نفس الجهاز الذي فتحت فيه الصفحة.</div>
+    </div>
+    <div id="directBox" style="margin-top:12px;display:none">
+      <label>رابط الحمولة الذي سيجلبه الـ PS5</label>
+      <input type="text" id="payUrl" class="mono" readonly>
+      <div class="hint">في الوضع المباشر يجب أن يكون الـ PS5 قادراً على الوصول لهذا الرابط (شبكة منزلية أو إنترنت).</div>
+    </div>
+  </div>
+
+  <!-- ================= الزر ================= -->
+  <div class="card">
+    <button id="send" class="send">إرسال الـ ELF إلى PS5</button>
+    <div class="row end" style="margin-top:10px">
+      <span class="status"><span class="led"></span><span class="txt" id="summary">جاهز</span></span>
+    </div>
+  </div>
+
+  <!-- ================= السجل ================= -->
+  <div class="card">
+    <h2><span class="dot"></span>السجل</h2>
+    <pre id="log"></pre>
+    <div class="row end" style="margin-top:10px">
+      <button id="clear" class="ghost">مسح السجل</button>
+    </div>
+  </div>
+
+  <div class="hint" style="text-align:center">
+    المتصفح لا يستطيع فتح منفذ TCP مباشرة، لذلك الوضع المباشر من صفحة <span class="mono">https://</span> (GitHub Pages) سيُمنع بواسطة المتصفح (Mixed Content) — استخدم الجسر المحلي في تلك الحالة.
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var LS = {
+    host:   'ps5.host',
+    port:   'ps5.port',
+    bridge: 'ps5.bridge',
+    mode:   'ps5.mode'
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var el = {
+    host: $('host'), port: $('port'), bridge: $('bridge'),
+    payName: $('payName'), paySize: $('paySize'), payHash: $('payHash'),
+    payUrl: $('payUrl'), file: $('file'), pick: $('pick'), drop: $('drop'),
+    send: $('send'), ping: $('ping'), pingStatus: $('pingStatus'),
+    summary: $('summary'), log: $('log'), clear: $('clear'),
+    bridgeBox: $('bridgeBox'), directBox: $('directBox')
+  };
+
+  var state = {
+    mode: localStorage.getItem(LS.mode) || 'bridge',
+    payload: null,          // {name, size, bytes, url}
+    busy: false
+  };
+
+  /* ---------------- log ---------------- */
+  function log(msg, kind){
+    var t = new Date().toLocaleTimeString('en-GB',{hour12:false});
+    var prefix = kind === 'err' ? '[!]' : (kind === 'ok' ? '[+]' : '[-]');
+    var line = t + ' ' + prefix + ' ' + msg;
+    el.log.textContent += (el.log.textContent ? '\n' : '') + line;
+    el.log.scrollTop = el.log.scrollHeight;
+  }
+  function setSummary(txt, kind){
+    el.summary.textContent = txt;
+    el.summary.parentElement.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function setPing(txt, kind){
+    el.pingStatus.className = 'status' + (kind ? ' ' + kind : '');
+    el.pingStatus.querySelector('.txt').textContent = txt;
+  }
+
+  /* ---------------- helpers ---------------- */
+  function bytesFmt(n){
+    if(n < 1024) return n + ' B';
+    if(n < 1048576) return (n/1024).toFixed(1) + ' KiB';
+    return (n/1048576).toFixed(2) + ' MiB';
+  }
+  function save(k,v){ try{ localStorage.setItem(k, v); }catch(e){} }
+  function qs(o){
+    return Object.keys(o).map(function(k){
+      return encodeURIComponent(k) + '=' + encodeURIComponent(o[k]);
+    }).join('&');
+  }
+  function isLocalPage(){
+    var h = location.hostname;
+    return h === '127.0.0.1' || h === 'localhost' || h === '::1' || h === '[::1]';
+  }
+  function sha256(buf){
+    if(!window.crypto || !window.crypto.subtle) return Promise.resolve('(غير متاح — يتطلب https أو localhost)');
+    return window.crypto.subtle.digest('SHA-256', buf).then(function(d){
+      return Array.prototype.map.call(new Uint8Array(d), function(b){
+        return b.toString(16).padStart(2,'0');
+      }).join('');
+    });
+  }
+  function setPayload(name, buf, url){
+    var bytes = new Uint8Array(buf);
+    state.payload = { name: name, size: bytes.length, bytes: bytes, url: url || null };
+    el.payName.textContent = name;
+    el.paySize.textContent = bytesFmt(bytes.length) + '  (' + bytes.length + ' bytes)';
+    el.payHash.textContent = '…';
+    return sha256(buf).then(function(h){ el.payHash.textContent = h; });
+  }
+
+  /* ---------------- payload loading ---------------- */
+  function loadBundled(){
+    var url = 'crlr69.elf';
+    log('تحميل الحمولة المدمجة: ' + url);
+    return fetch(url, {cache:'no-store'})
+      .then(function(r){
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        return r.arrayBuffer();
+      })
+      .then(function(buf){
+        return setPayload('crlr69.elf', buf, new URL(url, location.href).href);
+      })
+      .then(function(){
+        log('تم تحميل الحمولة المدمجة بنجاح.', 'ok');
+        refreshPayUrl();
+      })
+      .catch(function(e){
+        log('تعذّر تحميل crlr69.elf تلقائياً: ' + e.message + ' — اختر الملف يدوياً.', 'err');
+      });
+  }
+
+  function loadFile(f){
+    if(!f) return;
+    log('قراءة الملف: ' + f.name);
+    f.arrayBuffer().then(function(buf){
+      return setPayload(f.name, buf, null);
+    }).then(function(){
+      log('الحمولة: ' + el.payName.textContent + ' (' + el.paySize.textContent + ')', 'ok');
+      refreshPayUrl();
+    }).catch(function(e){
+      log('خطأ في قراءة الملف: ' + e.message, 'err');
+    });
+  }
+
+  function refreshPayUrl(){
+    if(!state.payload){ return; }
+    var url;
+    if(isLocalPage()){
+      // الصفحة تعمل من الجسر - الـ PS5 يجب أن يصل لعنوان الشبكة المحلية
+      var ip = state.lanIP || '192.168.1.10';
+      var port = (el.bridge.value || '').split(':').pop() || '8765';
+      url = 'http://' + ip + ':' + port + '/' + state.payload.name;
+    } else {
+      url = state.payload.url || (location.origin + '/' + state.payload.name);
+    }
+    el.payUrl.value = url;
+  }
+
+  /* ---------------- bridge info ---------------- */
+  function bridgeInfo(){
+    var b = (el.bridge.value || '').replace(/\/+$/,'');
+    if(!b) return Promise.resolve(null);
+    return fetch(b + '/info', {cache:'no-store'})
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return null; });
+  }
+
+  /* ---------------- ping ---------------- */
+  function doPing(){
+    var host = el.host.value.trim();
+    var port = el.port.value.trim() || '9021';
+    if(!host){ setPing('اكتب عنوان IP أولاً', 'warn'); return; }
+    setPing('جارٍ الاختبار...', 'warn');
+    log('اختبار الاتصال بـ ' + host + ':' + port);
+
+    var task;
+    if(state.mode === 'direct'){
+      // في الوضع المباشر نتحقق عبر الجسر إن كان متاحاً، وإلا نعتبر أن المتصفح سيمنع الطلب
+      task = bridgeInfo().then(function(info){
+        if(!info) throw new Error('لا يوجد جسر يعمل — لا يمكن الاختبار من المتصفح');
+        return fetch(info.bridge + '/ping?' + qs({host:host, port:port}));
+      });
+    } else {
+      var b = (el.bridge.value || '').replace(/\/+$/,'');
+      if(!b){ setPing('رابط الجسر فارغ', 'warn'); return; }
+      task = fetch(b + '/ping?' + qs({host:host, port:port}));
+    }
+
+    task.then(function(r){ return r.json(); })
+      .then(function(j){
+        if(j && j.ok){ setPing('الجهاز يرد على ' + host + ':' + port, 'ok'); log('نجاح: ' + j.message, 'ok'); }
+        else { setPing('لا يوجد رد من ' + host + ':' + port, 'bad'); log('فشل: ' + (j && j.message || 'unknown'), 'err'); }
+      })
+      .catch(function(e){
+        setPing('تعذّر الاتصال (هل الجسر يعمل؟)', 'bad');
+        log('خطأ: ' + e.message, 'err');
+      });
+  }
+
+  /* ---------------- send ---------------- */
+  function doSend(){
+    if(state.busy) return;
+    if(!state.payload){ log('لا توجد حمولة. اختر ملف .ELF أولاً.', 'err'); return; }
+    var host = el.host.value.trim();
+    var port = el.port.value.trim() || '9021';
+    if(!host){ log('اكتب عنوان IP للـ PS5 أولاً.', 'err'); return; }
+
+    state.busy = true;
+    el.send.disabled = true;
+    el.send.classList.add('loading');
+    el.send.textContent = 'جارٍ الإرسال…';
+    setSummary('جارٍ الإرسال…', 'warn');
+
+    var p = state.mode === 'direct' ? sendDirect(host, port) : sendViaBridge(host, port);
+
+    p.then(function(res){
+      state.busy = false;
+      el.send.disabled = false;
+      el.send.classList.remove('loading');
+      el.send.textContent = 'إرسال الـ ELF إلى PS5';
+      if(res.ok){
+        setSummary('تم الإرسال بنجاح', 'ok');
+        log('تم الإرسال بنجاح (' + bytesFmt(state.payload.size) + ').', 'ok');
+      } else {
+        setSummary('فشل الإرسال', 'bad');
+        log('فشل: ' + res.message, 'err');
+      }
+      if(res.reply){
+        log('رد الجهاز:\n' + res.reply);
+      }
+    }).catch(function(e){
+      state.busy = false;
+      el.send.disabled = false;
+      el.send.classList.remove('loading');
+      el.send.textContent = 'إرسال الـ ELF إلى PS5';
+      setSummary('خطأ', 'bad');
+      log('خطأ: ' + (e && e.message || e), 'err');
+      if(state.mode === 'direct'){
+        log('راجع: صفحة https + طلب http = Mixed Content. استخدم وضع الجسر المحلي.', 'err');
+      }
+    });
+  }
+
+  function sendViaBridge(host, port){
+    var b = (el.bridge.value || '').replace(/\/+$/,'');
+    if(!b) return Promise.resolve({ok:false, message:'رابط الجسر فارغ'});
+    log('الإرسال عبر الجسر: ' + b);
+    return fetch(b + '/send?' + qs({host:host, port:port}), {
+      method:'POST',
+      headers:{'Content-Type':'application/octet-stream'},
+      body: state.payload.bytes
+    }).then(function(r){ return r.json(); })
+      .catch(function(e){ throw new Error('فشل الوصول للجسر (' + e.message + ') — هل يعمل bridge.py؟'); });
+  }
+
+  function sendDirect(host, port){
+    var target = 'http://' + host + ':' + port + '/?uri=' + encodeURIComponent(el.payUrl.value);
+    log('الإرسال المباشر: ' + target);
+    return fetch(target, {mode:'cors', cache:'no-store'})
+      .then(function(r){
+        return r.text().then(function(t){
+          return { ok: r.ok, message: 'HTTP ' + r.status, reply: t };
+        });
+      })
+      .catch(function(e){
+        throw new Error('طلب مباشر مرفوض من المتصفح (' + e.message + ')');
+      });
+  }
+
+  /* ---------------- UI wiring ---------------- */
+  el.host.value = localStorage.getItem(LS.host) || '';
+  el.port.value = localStorage.getItem(LS.port) || '9021';
+  el.bridge.value = localStorage.getItem(LS.bridge) || 'http://127.0.0.1:8765';
+
+  el.host.addEventListener('input', function(){ save(LS.host, el.host.value); });
+  el.port.addEventListener('input', function(){ save(LS.port, el.port.value); });
+  el.bridge.addEventListener('input', function(){ save(LS.bridge, el.bridge.value); refreshPayUrl(); });
+
+  el.pick.addEventListener('click', function(){ el.file.click(); });
+  el.file.addEventListener('change', function(e){ loadFile(e.target.files[0]); });
+
+  ['dragenter','dragover'].forEach(function(ev){
+    el.drop.addEventListener(ev, function(e){ e.preventDefault(); el.drop.classList.add('over'); });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    el.drop.addEventListener(ev, function(e){ e.preventDefault(); el.drop.classList.remove('over'); });
+  });
+  el.drop.addEventListener('drop', function(e){
+    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  el.drop.addEventListener('click', function(){ el.file.click(); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.mode'), function(m){
+    m.addEventListener('click', function(){
+      Array.prototype.forEach.call(document.querySelectorAll('.mode'), function(x){ x.classList.remove('sel'); });
+      m.classList.add('sel');
+      state.mode = m.getAttribute('data-mode');
+      save(LS.mode, state.mode);
+      el.bridgeBox.style.display = state.mode === 'bridge' ? '' : 'none';
+      el.directBox.style.display = state.mode === 'direct' ? '' : 'none';
+      log('وضع الإرسال: ' + (state.mode === 'bridge' ? 'عبر الجسر المحلي' : 'مباشر من المتصفح'));
+    });
+  });
+  // restore mode
+  (function(){
+    var sel = document.querySelector('.mode[data-mode="' + state.mode + '"]');
+    if(sel) sel.click(); else el.bridgeBox.style.display='';
+  })();
+
+  el.send.addEventListener('click', doSend);
+  el.ping.addEventListener('click', doPing);
+  el.clear.addEventListener('click', function(){ el.log.textContent = ''; });
+
+  /* ---------------- boot ---------------- */
+  log('الصفحة جاهزة. ' + (location.protocol === 'https:' ? 'الموقع عبر https.' : 'الموقع عبر http.'));
+  bridgeInfo().then(function(info){
+    if(info && info.lanIPs && info.lanIPs.length){
+      state.lanIP = info.lanIPs[0];
+      log('الجسر يعمل — عناوين الجهاز على الشبكة: ' + info.lanIPs.join(', '), 'ok');
+      refreshPayUrl();
+    } else {
+      log('لم يتم العثور على جسر محلي على ' + el.bridge.value + ' — شغّل: python bridge.py', 'warn');
+    }
+  });
+  loadBundled();
+})();
+</script>
+</body>
+</html>
