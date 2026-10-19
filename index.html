@@ -49,7 +49,6 @@
   send.addEventListener('click', function () {
     send.disabled = true;
     show('Sending…');
-
     var done = false;
     function finish(text) {
       if (done) return;
@@ -92,6 +91,11 @@
         window.location.href = LOADER_URL;
       });
   });
+
+  // Temporary test hook: ?auto=1 sends without a click.
+  if (/[?&]auto=1/.test(location.search)) {
+    send.click();
+  }
 })();
 </script>
 </body>
