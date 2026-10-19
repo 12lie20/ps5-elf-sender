@@ -4,16 +4,32 @@
 
 **https://12lie20.github.io/ps5-elf-sender/**
 
-## طريقة العمل
+## الأزرار
 
-1. الصفحة تحمّل `crlr69.elf` من GitHub Pages.
-2. لما تضغط **Send to PS5**، الصفحة تطلب من `elfldr` على الجهاز نفسه:
+| الزر | وش يسوي |
+|---|---|
+| **Send to PS5** | يرسل `crlr69.elf` للـ `elfldr` على `127.0.0.1:9021` داخل الجهاز |
+| **JB 13.60** | يفتح صفحة Relapse (استغلال WebKit + kernel) وتشغّله في نفس المتصفح |
 
-   ```
-   GET http://127.0.0.1:9021/?uri=https%3A%2F%2F12lie20.github.io%2Fps5-elf-sender%2Fcrlr69.elf
-   ```
+## الترتيب
 
-3. الـ PS5 يسحب الملف من GitHub ويشغّله. ما فيه أي PC في المعادلة.
+1. **JB 13.60** — تشتغل الاستغلال في متصفح الـ PS5 (User's Guide). انتظر حتى يطلع:
+   `[+] elfldr is listening on port 9021`.
+2. ارجع للصفحة (زر الرجوع في المتصفح) واضغط **Send to PS5**.
+
+الاستغلال نفسه (`relapse`) يدعم 7.00 – 13.60، ومصدره:
+<https://github.com/soniciso1/relapse> — صفحة `Payloads (sender)` عنده ترسل الـ payloads
+من الجهاز مباشرة، فعنده بديل عن زر Send.
+
+## طريقة عمل زر Send
+
+الصفحة تطلب من `elfldr` على الجهاز نفسه:
+
+```
+GET http://127.0.0.1:9021/?uri=https%3A%2F%2F12lie20.github.io%2Fps5-elf-sender%2Fcrlr69.elf
+```
+
+الـ PS5 يسحب الملف من GitHub Pages ويشغّله. ما فيه أي PC في المعادلة.
 
 الصفحة تحاول `fetch` أولاً، وإذا المتصفح منعها (mixed content: صفحة https تطلب http) تسوي
 `window.location` — التنقل بين الصفحات ما يخضع لقاعدة mixed content، فدايماً يوصل الطلب.
