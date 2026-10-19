@@ -91,11 +91,6 @@
         window.location.href = LOADER_URL;
       });
   });
-
-  // Temporary test hook: ?auto=1 sends without a click.
-  if (/[?&]auto=1/.test(location.search)) {
-    send.click();
-  }
 })();
 </script>
 </body>
